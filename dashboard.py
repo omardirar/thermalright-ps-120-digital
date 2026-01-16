@@ -18,10 +18,10 @@ NUMBER_OF_LEDS = 84
 # DEFAULT SETTINGS
 settings = {
     "update_interval": 2.0,
-    "wipe_speed": 0.01,
-    "hue_step": 0.02,
+    "wipe_speed": 0.015,
+    "hue_step": 0.01,
     "brightness": 1.0,
-    "color_offset": 0.5 # 0.5 = Opposite colors
+    "left_color_offset": 0.1
 }
 
 def get_cpu_power_linux():
@@ -61,7 +61,7 @@ led_group_mask = [0] * NUMBER_OF_LEDS
 
 def assign_coords(indices, start_pos, end_pos, group_id):
     """
-    group_id: 0 = LEFT SIDE (Temp/Speed), 1 = RIGHT SIDE (Watt/Usage)
+    group_id: 0 = LEFT (Temp/Speed), 1 = RIGHT (Watt/Usage)
     """
     count = len(indices)
     step = (end_pos - start_pos) / count if count > 1 else 0
@@ -72,38 +72,49 @@ def assign_coords(indices, start_pos, end_pos, group_id):
             led_group_mask[led_idx] = group_id
 
 # ==============================================================================
-# VISUAL LAYOUT & GROUPS (Based on your correction)
-# Path: Top-Left -> Top-Right -> Bottom-Right -> Bottom-Left
+# ANIMATION PATH (ORDER MATTERS FOR OVERLAPS)
+# Path: Left Column (Top->Bot) then Right Column (Top->Bot)
 # ==============================================================================
 
-# 1. TEMPERATURE (Top Left) -> LEFT GROUP (0)
-# Timeline: 0.00 -> 0.25
+# --- STEP 1: BACKGROUND ELEMENTS (Set these FIRST so digits overwrite them) ---
+# Usage Bar (Right Side / Group 1)
+# Animation Time: 0.90 -> 1.00
+assign_coords(list(range(36, 51)), 0.90, 1.00, 1)
+
+
+# --- STEP 2: LEFT COLUMN (Group 0) ---
+
+# Temperature (Top Left)
+# Time: 0.00 -> 0.25
 led_pos_coords[51] = 0.02; led_group_mask[51] = 0           # CPU
 assign_coords([49, 50, 52, 48, 45, 46, 47], 0.03, 0.10, 0)  # Hundreds
 assign_coords([57, 58, 60, 56, 53, 54, 55], 0.10, 0.17, 0)  # Tens
 assign_coords([65, 66, 67, 64, 61, 62, 63], 0.17, 0.24, 0)  # Ones
 led_pos_coords[69] = 0.25; led_group_mask[69] = 0           # C Symbol
 
-# 2. WATTS (Top Right) -> RIGHT GROUP (1)
-# Timeline: 0.26 -> 0.50
-# Path: Left Digit -> Right Digit
-assign_coords([74, 75, 76, 73, 70, 71, 72], 0.26, 0.38, 1) 
-assign_coords([81, 82, 83, 80, 77, 78, 79], 0.38, 0.50, 1) 
+# Speed (Bottom Left)
+# Time: 0.26 -> 0.50
+# CRITICAL: Since this is called AFTER the usage bar above, 
+# it will correctly reclaim indices 36-44 for Group 0.
+assign_coords([44, 43, 42, 41, 40, 39, 38], 0.26, 0.32, 0) # Thousands
+assign_coords([37, 36, 35, 34, 33, 32, 31], 0.32, 0.38, 0) # Hundreds
+assign_coords([30, 29, 28, 27, 26, 25, 24], 0.38, 0.44, 0) # Tens
+assign_coords([23, 22, 21, 20, 19, 18, 17], 0.44, 0.49, 0) # Ones
+led_pos_coords[16] = 0.50; led_group_mask[16] = 0          # MHz
 
-# 3. PERCENTAGE (Bottom Right) -> RIGHT GROUP (1)
-# Timeline: 0.51 -> 0.75
-assign_coords([14, 13, 12, 11, 10, 9, 8], 0.51, 0.58, 1)  # Tens
-assign_coords([7, 6, 5, 4, 3, 2, 1],      0.58, 0.65, 1)  # Ones
-led_pos_coords[0] = 0.66; led_group_mask[0] = 1           # Percent
-assign_coords(list(range(36, 51)), 0.67, 0.75, 1)         # Usage Bar
 
-# 4. SPEED (Bottom Left) -> LEFT GROUP (0)
-# Timeline: 0.76 -> 1.00
-assign_coords([44, 43, 42, 41, 40, 39, 38], 0.76, 0.82, 0) # Thousands
-assign_coords([37, 36, 35, 34, 33, 32, 31], 0.82, 0.88, 0) # Hundreds
-assign_coords([30, 29, 28, 27, 26, 25, 24], 0.88, 0.94, 0) # Tens
-assign_coords([23, 22, 21, 20, 19, 18, 17], 0.94, 0.99, 0) # Ones
-led_pos_coords[16] = 1.00; led_group_mask[16] = 0          # MHz
+# --- STEP 3: RIGHT COLUMN (Group 1) ---
+
+# Watts (Top Right)
+# Time: 0.51 -> 0.75
+assign_coords([74, 75, 76, 73, 70, 71, 72], 0.51, 0.63, 1) # Left Digit
+assign_coords([81, 82, 83, 80, 77, 78, 79], 0.63, 0.75, 1) # Right Digit
+
+# Percentage (Bottom Right)
+# Time: 0.76 -> 1.00
+assign_coords([14, 13, 12, 11, 10, 9, 8], 0.76, 0.82, 1)  # Tens
+assign_coords([7, 6, 5, 4, 3, 2, 1],      0.82, 0.88, 1)  # Ones
+led_pos_coords[0] = 0.89; led_group_mask[0] = 1           # Percent
 
 
 # --- DATA INDICES ---
@@ -129,7 +140,7 @@ def get_cpu_temp():
     return 0
 
 def main():
-    print(f"Starting Left/Right Split Dashboard...")
+    print(f"Starting Overlap-Fixed Dashboard...")
     load_config()
     
     last_data_time = 0
@@ -212,35 +223,38 @@ def main():
                     current_hue = target_hue
                     target_hue = (target_hue + settings["hue_step"]) % 1.0
 
-                # Color Group 0 (Left)
-                r0, g0, b0 = colorsys.hsv_to_rgb(current_hue, 1.0, 1.0)
-                base_0_old = f"{int(r0*255):02X}{int(g0*255):02X}{int(b0*255):02X}"
-                r0n, g0n, b0n = colorsys.hsv_to_rgb(target_hue, 1.0, 1.0)
-                base_0_new = f"{int(r0n*255):02X}{int(g0n*255):02X}{int(b0n*255):02X}"
-                
-                # Color Group 1 (Right)
-                hue_1 = (current_hue + settings.get("color_offset", 0.5)) % 1.0
-                hue_1n = (target_hue + settings.get("color_offset", 0.5)) % 1.0
-                r1, g1, b1 = colorsys.hsv_to_rgb(hue_1, 1.0, 1.0)
-                base_1_old = f"{int(r1*255):02X}{int(g1*255):02X}{int(b1*255):02X}"
-                r1n, g1n, b1n = colorsys.hsv_to_rgb(hue_1n, 1.0, 1.0)
-                base_1_new = f"{int(r1n*255):02X}{int(g1n*255):02X}{int(b1n*255):02X}"
+                # --- COLOR LOGIC ---
+                offset = settings.get("left_color_offset", 0.1)
+
+                # Base (Right Side)
+                r_base, g_base, b_base = colorsys.hsv_to_rgb(current_hue, 1.0, 1.0)
+                col_right_old = f"{int(r_base*255):02X}{int(g_base*255):02X}{int(b_base*255):02X}"
+                r_base_n, g_base_n, b_base_n = colorsys.hsv_to_rgb(target_hue, 1.0, 1.0)
+                col_right_new = f"{int(r_base_n*255):02X}{int(g_base_n*255):02X}{int(b_base_n*255):02X}"
+
+                # Offset (Left Side)
+                hue_left = (current_hue + offset) % 1.0
+                target_hue_left = (target_hue + offset) % 1.0
+                r_left, g_left, b_left = colorsys.hsv_to_rgb(hue_left, 1.0, 1.0)
+                col_left_old = f"{int(r_left*255):02X}{int(g_left*255):02X}{int(b_left*255):02X}"
+                r_left_n, g_left_n, b_left_n = colorsys.hsv_to_rgb(target_hue_left, 1.0, 1.0)
+                col_left_new = f"{int(r_left_n*255):02X}{int(g_left_n*255):02X}{int(b_left_n*255):02X}"
 
                 # Brightness
-                dim_0_old = apply_brightness(base_0_old, settings["brightness"])
-                dim_0_new = apply_brightness(base_0_new, settings["brightness"])
-                dim_1_old = apply_brightness(base_1_old, settings["brightness"])
-                dim_1_new = apply_brightness(base_1_new, settings["brightness"])
+                col_right_old = apply_brightness(col_right_old, settings["brightness"])
+                col_right_new = apply_brightness(col_right_new, settings["brightness"])
+                col_left_old = apply_brightness(col_left_old, settings["brightness"])
+                col_left_new = apply_brightness(col_left_new, settings["brightness"])
 
                 colors = ["000000"] * NUMBER_OF_LEDS
                 for i in range(NUMBER_OF_LEDS):
                     if leds_on_mask[i]:
-                        is_group_1 = (led_group_mask[i] == 1)
-                        col_old = dim_1_old if is_group_1 else dim_0_old
-                        col_new = dim_1_new if is_group_1 else dim_0_new
+                        is_right = (led_group_mask[i] == 1)
+                        c_old = col_right_old if is_right else col_left_old
+                        c_new = col_right_new if is_right else col_left_new
                         
-                        if wipe_progress >= led_pos_coords[i]: colors[i] = col_new
-                        else: colors[i] = col_old
+                        if wipe_progress >= led_pos_coords[i]: colors[i] = c_new
+                        else: colors[i] = c_old
 
                 sys.stdout.write(f"\rWatts: {cached_watts:.1f} | Temp: {int(cached_temp)}C | Use: {int(cached_usage)}%   ")
                 sys.stdout.flush()
