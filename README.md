@@ -3,11 +3,16 @@
 A custom Python driver for Thermalright Digital CPU Coolers (e.g., Phantom Spirit 120 EVO Digital). This driver replaces the default software, offering smoother updates, lower resource usage, and a premium "Diagonal Wipe" color animation.
 
 ## Features
-* **Real-time Monitoring:** Displays CPU Temperature, Usage, and Frequency.
+* **CPU/GPU Cycling:** Automatically alternates between CPU and GPU stats.
+* **Four-Field Layout:** Top-left `Temp`, top-right `Watt`, bottom-left `Speed`, bottom-right `Usage`.
+* **Mode Indicators:** LED `51` = CPU mode, LED `59` = GPU mode.
+* **Integer-Only Display:** All shown metrics are clamped/rendered as integers for stability.
+* **GPU Sensor Support (Linux):** Uses `nvidia-smi` first, then sysfs fallbacks for AMD/Intel.
 * **Wipe Fill Animation:** Colors paint diagonally from bottom-right to top-left.
 * **Live Configuration:** Adjust speed, brightness, and colors instantly without restarting.
 * **Portable:** Can run from any directory.
 * **Efficient:** Minimal system resource usage.
+* **Artifact Mitigation:** Usage bar drawing is currently disabled to avoid segment overlap issues.
 
 ## Installation
 
@@ -52,7 +57,8 @@ Customize the driver by editing `config.json` in the script directory. **Changes
         "update_interval": 2.0,
         "wipe_speed": 0.01,
         "hue_step": 0.02,
-        "brightness": 1.0
+        "brightness": 1.0,
+        "left_color_offset": 0.1
     }
 
 ### Configuration Variables
@@ -63,6 +69,12 @@ Customize the driver by editing `config.json` in the script directory. **Changes
 | `wipe_speed` | `0.01` | How fast the new color fills the screen. Lower (`0.005`) is slower/smoother. |
 | `hue_step` | `0.02` | Color difference for the next fill. Lower = subtle gradient; Higher = distinct colors. |
 | `brightness` | `1.0` | Brightness multiplier from `0.0` (Off) to `1.0` (Max). |
+| `left_color_offset` | `0.1` | Hue offset applied to left-side elements relative to the right side. |
+
+### Notes
+
+* CPU/GPU mode switching defaults to 4 seconds (`MODE_CYCLE_INTERVAL` in `dashboard.py`).
+* You can override cycle time in `config.json` by adding `cycle_interval` (seconds).
 
 ## Auto-Start Service
 
