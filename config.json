@@ -1,7 +1,9 @@
 {
     "update_interval": 2.0,
-    "wipe_speed": 1.0,
-    "hue_step": 0.002,
-    "brightness": 0.5,
-    "left_color_offset": 0.1
+    "wipe_speed": 999,
+    "hue_step": 0.0,
+    "brightness": 0.7,
+    "left_color_offset": 0.0,
+    "base_hue": 0.58,
+    "saturation": 0.18
 }

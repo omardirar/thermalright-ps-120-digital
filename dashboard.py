@@ -24,7 +24,9 @@ settings = {
     "wipe_speed": 0.015,
     "hue_step": 0.01,
     "brightness": 1.0,
-    "left_color_offset": 0.1
+    "left_color_offset": 0.1,
+    "base_hue": 0.58,
+    "saturation": 0.18
 }
 
 def get_cpu_power_linux():
@@ -288,8 +290,8 @@ def main():
     show_cpu_mode = True
     leds_on_mask = [False] * NUMBER_OF_LEDS
 
-    current_hue = 0.0
-    target_hue = settings["hue_step"]
+    current_hue = float(settings.get("base_hue", 0.58)) % 1.0
+    target_hue = (current_hue + float(settings.get("hue_step", 0.0))) % 1.0
     wipe_progress = 0.0
 
     while True:
@@ -385,26 +387,33 @@ def main():
 
                 # ANIMATION
                 wipe_progress += settings["wipe_speed"]
+                hue_step = float(settings.get("hue_step", 0.0))
+                base_hue = float(settings.get("base_hue", 0.58)) % 1.0
+                saturation = max(0.0, min(1.0, float(settings.get("saturation", 0.18))))
+                if abs(hue_step) < 1e-9:
+                    # Fixed color mode (e.g. white if saturation=0.0)
+                    current_hue = base_hue
+                    target_hue = base_hue
                 if wipe_progress >= 1.2:
                     wipe_progress = 0.0
                     current_hue = target_hue
-                    target_hue = (target_hue + settings["hue_step"]) % 1.0
+                    target_hue = (target_hue + hue_step) % 1.0
 
                 # --- COLOR LOGIC ---
                 offset = settings.get("left_color_offset", 0.1)
 
                 # Base (Right Side)
-                r_base, g_base, b_base = colorsys.hsv_to_rgb(current_hue, 1.0, 1.0)
+                r_base, g_base, b_base = colorsys.hsv_to_rgb(current_hue, saturation, 1.0)
                 col_right_old = f"{int(r_base*255):02X}{int(g_base*255):02X}{int(b_base*255):02X}"
-                r_base_n, g_base_n, b_base_n = colorsys.hsv_to_rgb(target_hue, 1.0, 1.0)
+                r_base_n, g_base_n, b_base_n = colorsys.hsv_to_rgb(target_hue, saturation, 1.0)
                 col_right_new = f"{int(r_base_n*255):02X}{int(g_base_n*255):02X}{int(b_base_n*255):02X}"
 
                 # Offset (Left Side)
                 hue_left = (current_hue + offset) % 1.0
                 target_hue_left = (target_hue + offset) % 1.0
-                r_left, g_left, b_left = colorsys.hsv_to_rgb(hue_left, 1.0, 1.0)
+                r_left, g_left, b_left = colorsys.hsv_to_rgb(hue_left, saturation, 1.0)
                 col_left_old = f"{int(r_left*255):02X}{int(g_left*255):02X}{int(b_left*255):02X}"
-                r_left_n, g_left_n, b_left_n = colorsys.hsv_to_rgb(target_hue_left, 1.0, 1.0)
+                r_left_n, g_left_n, b_left_n = colorsys.hsv_to_rgb(target_hue_left, saturation, 1.0)
                 col_left_new = f"{int(r_left_n*255):02X}{int(g_left_n*255):02X}{int(b_left_n*255):02X}"
 
                 # Brightness

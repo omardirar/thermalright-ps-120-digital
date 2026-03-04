@@ -55,10 +55,12 @@ Customize the driver by editing `config.json` in the script directory. **Changes
 
     {
         "update_interval": 2.0,
-        "wipe_speed": 0.01,
-        "hue_step": 0.02,
-        "brightness": 1.0,
-        "left_color_offset": 0.1
+        "wipe_speed": 999,
+        "hue_step": 0.0,
+        "brightness": 0.7,
+        "left_color_offset": 0.0,
+        "base_hue": 0.58,
+        "saturation": 0.18
     }
 
 ### Configuration Variables
@@ -70,6 +72,8 @@ Customize the driver by editing `config.json` in the script directory. **Changes
 | `hue_step` | `0.02` | Color difference for the next fill. Lower = subtle gradient; Higher = distinct colors. |
 | `brightness` | `1.0` | Brightness multiplier from `0.0` (Off) to `1.0` (Max). |
 | `left_color_offset` | `0.1` | Hue offset applied to left-side elements relative to the right side. |
+| `base_hue` | `0.58` | Base hue used for fixed or animated color. |
+| `saturation` | `0.18` | Color saturation from `0.0` (white/gray) to `1.0` (full color). |
 
 ### Notes
 
